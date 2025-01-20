@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Montbrison - Porte du Massif Central</title>
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #bbdefb; }
+        .container { display: flex; flex-wrap: wrap; justify-content: center; }
+        .section { background: #e3f2fd; margin: 20px; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.2); width: 80%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #0d47a1; padding: 10px; text-align: center; }
+        th { background-color: #1976d2; color: white; }
+        ul { list-style-type: none; padding: 0; }
+        li { padding: 10px; cursor: pointer; background: #64b5f6; margin: 5px 0; border-radius: 5px; text-align: center; color: white; font-weight: bold; }
+        li:hover { background: #1976d2; }
+        .hidden { display: none; }
+        .stop-list { border-left: 3px solid #0d47a1; padding-left: 15px; margin-top: 10px; font-weight: bold; }
+        .on-time { background-color: #4CAF50; color: white; }
+        .delayed { background-color: #FF9800; color: white; }
+        #clock { font-size: 20px; font-weight: bold; text-align: center; color: #0d47a1; }
+    </style>
+</head>
+<body>
+    <h1 class="w3-center w3-text-blue">🚉 Montbrison - Porte du Massif Central</h1>
+    <p id="clock"></p>
+    
+    <div class="container">
+        <div class="section w3-card">
+            <h2 class="w3-text-blue">📅 Prochains Départs</h2>
+            <table class="w3-table w3-bordered">
+                <thead>
+                    <tr><th>Mode</th><th>Ligne</th><th>Prochain Départ</th><th>Retard</th><th>Arrivée prévue</th><th>Quai</th></tr>
+                </thead>
+                <tbody id="departures"></tbody>
+            </table>
+        </div>
+        
+        <div class="section hidden w3-card" id="stopsSection">
+            <h2 class="w3-text-blue">🛑 Arrêts et heures de passage</h2>
+            <div id="stopsList"></div>
+            <h3 class="w3-text-blue">📆 Autres Départs</h3>
+            <ul id="otherDepartures"></ul>
+        </div>
+    </div>
+    
+    <script>
+        const horaires = {
+            "Ligne A": ["10:30", "11:30", "12:30"],
+            "Ligne B": ["10:45", "11:45", "12:45"],
+            "Ligne C": ["11:00", "12:00", "13:00"]
+        };
+
+        const stops = {
+            "Ligne A": ["Arrêt 1", "Arrêt 2", "Arrêt 3"],
+            "Ligne B": ["Arrêt A", "Arrêt B", "Arrêt C"],
+            "Ligne C": ["Stop X", "Stop Y", "Stop Z"]
+        };
+
+        const travelTimes = { "Ligne A": 20, "Ligne B": 15, "Ligne C": 25 };
+
+        const quais = { "Ligne A": 1, "Ligne B": 2, "Ligne C": 3 };
+
+        const modes = { "Ligne A": "🚆", "Ligne B": "🚌", "Ligne C": "🚆" };
+
+        function getCurrentTime() {
+            let now = new Date();
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+
+        function calculateDelay(hour) {
+            let peakFactor = Math.abs(hour - 8) < 3 ? (1 - Math.abs(hour - 8) / 3) : 
+                             Math.abs(hour - 18) < 3 ? (1 - Math.abs(hour - 18) / 3) : 0;
+            return Math.round(peakFactor * 5);
+        }
+
+        function calculateArrivalTime(departureTime, delay, travelTime) {
+            let [hours, minutes] = departureTime.split(':').map(Number);
+            minutes += delay + travelTime;
+            hours += Math.floor(minutes / 60);
+            minutes = minutes % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+        }
+
+        function updateClock() {
+            document.getElementById("clock").textContent = `🕒 Heure actuelle : ${getCurrentTime()}`;
+        }
+
+        function loadDepartures() {
+            const departuresTable = document.getElementById("departures");
+            departuresTable.innerHTML = "";
+            let now = new Date();
+            let currentHour = now.getHours();
+
+            for (let line in horaires) {
+                let departure = horaires[line][0];
+                let delay = calculateDelay(currentHour);
+                let arrivalTime = calculateArrivalTime(departure, delay, travelTimes[line]);
+                let delayClass = delay === 0 ? "on-time" : "delayed";
+
+                let row = `<tr class="${delayClass}" onclick="showStops('${line}', '${departure}', ${delay}, ${travelTimes[line]})">
+                                <td>${modes[line]}</td>
+                                <td>${line}</td>
+                                <td>${departure}</td>
+                                <td>${delay === 0 ? "À l'heure" : `+${delay} min`}</td>
+                                <td>${arrivalTime}</td>
+                                <td>${quais[line]}</td>
+                           </tr>`;
+                departuresTable.innerHTML += row;
+            }
+        }
+
+        function showStops(line, departureTime, delay, travelTime) {
+            const stopsList = document.getElementById("stopsList");
+            let stopTimes = [];
+            let [hours, minutes] = departureTime.split(':').map(Number);
+            minutes += delay;
+            for (let i = 0; i < stops[line].length; i++) {
+                stopTimes.push(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`);
+                minutes += Math.floor(travelTime / stops[line].length);
+            }
+
+            stopsList.innerHTML = stops[line].map((stop, i) => `<p>🛑 ${stop} - ${stopTimes[i]}</p>`).join('');
+
+            const otherDepartures = document.getElementById("otherDepartures");
+            otherDepartures.innerHTML = horaires[line].slice(1).map(time => 
+                `<li onclick="showStops('${line}', '${time}', ${delay}, ${travelTimes[line]})">${time}</li>`
+            ).join('');
+
+            document.getElementById("stopsSection").classList.remove("hidden");
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            updateClock();
+            loadDepartures();
+            setInterval(updateClock, 60000);
+        });
+    </script>
+</body>
+</html>
